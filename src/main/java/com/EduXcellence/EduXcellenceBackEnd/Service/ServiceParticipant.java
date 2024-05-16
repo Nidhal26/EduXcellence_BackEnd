@@ -134,10 +134,9 @@ public class ServiceParticipant {
 
     public ResponseEntity<Map> insererBonDeCommande(String token, MultipartFile bonDeCommande,
                                                     String ParticipantID,String FormationID) throws IOException {
-        Payement payement = new Payement();
         Query query = new Query();
         if (authenticationFilter.VerifierTOKEN(token) && authenticationFilter.RecupererRole(token).equals("USER")) {
-            payement = mongoTemplate.findOne(query(Criteria.where("ParticipantID").is(ParticipantID).and("FormationID").is(FormationID)), Payement.class);
+            Payement payement = mongoTemplate.findOne(query(Criteria.where("ParticipantID").is(ParticipantID).and("FormationID").is(FormationID)), Payement.class);
             payement.setBonDeCommande(saveFile(bonDeCommande));
             payementRepo.save(payement);
             map.put("Message", "Votre bon de commande a été inséré");
