@@ -37,9 +37,9 @@ public class ServiceAttestation {
         Map map = new HashMap();
         if (authenticationFilter.VerifierTOKEN(token) && authenticationFilter.RecupererRole(token).equals("ADMIN")) {
             this.attestationRepo.save(attestation);
-            map.put("Message", "Attestation Ajouter Avec Succeé");
+            map.put("Message", "Attestation Ajoutée Avec Succés");
         } else {
-            map.put("Message", "Acceé refuseé");
+            map.put("Message", "Accès refusé");
         }
         return new ResponseEntity<>(map, HttpStatus.OK);
     }
@@ -49,7 +49,7 @@ public class ServiceAttestation {
         if (authenticationFilter.VerifierTOKEN(token) && authenticationFilter.RecupererRole(token).equals("ADMIN")) {
             map.put("tableAttestation", this.attestationRepo.findAll());
         } else {
-            map.put("Message", "Acceé refuseé");
+            map.put("Message", "Accès refusé");
         }
         return new ResponseEntity<>(map, HttpStatus.OK);
     }

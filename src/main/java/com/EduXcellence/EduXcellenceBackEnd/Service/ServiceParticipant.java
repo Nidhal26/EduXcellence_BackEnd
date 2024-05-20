@@ -1,5 +1,6 @@
 package com.EduXcellence.EduXcellenceBackEnd.Service;
 
+import com.EduXcellence.EduXcellenceBackEnd.Models.Formateur;
 import com.EduXcellence.EduXcellenceBackEnd.Models.Participant;
 import com.EduXcellence.EduXcellenceBackEnd.Models.Payement;
 import com.EduXcellence.EduXcellenceBackEnd.Repository.ParticipantRepo;
@@ -28,6 +29,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.*;
 
+import static org.springframework.data.mongodb.core.query.Criteria.where;
 import static org.springframework.data.mongodb.core.query.Query.query;
 
 @Service
@@ -57,7 +59,7 @@ public class ServiceParticipant {
         Query query = new Query();
         query.addCriteria(Criteria.where("email").regex(participant.getEmail(), "i"));
         Participant user = mongoTemplate.findOne(query, Participant.class);
-        if (user == null || !bCryptPasswordEncoder.matches(participant.getMotDePasse(), user.getMotDePasse())) {
+        if (user == null || participant.getMotDePasse() != authenticationFilter.decrypt(user.getMotDePasse())) {
             map.put("Message", "Invalid email or password");
             map.put("verif", "false");
         } else {
@@ -85,7 +87,7 @@ public class ServiceParticipant {
         Query existEmail = query(Criteria.where("email").regex(participant.getEmail(), "i"));
         Long part = mongoTemplate.count(existEmail, Participant.class);
         if (part == 0) {
-            String encryptedPassword = bCryptPasswordEncoder.encode(participant.getMotDePasse());
+            String encryptedPassword = authenticationFilter.encrypt(participant.getMotDePasse());
             participant.setMotDePasse(encryptedPassword);
             this.participantRepo.save(participant);
             map.put("Message", "Ajouté avec Succées");
@@ -100,7 +102,7 @@ public class ServiceParticipant {
 
     public ResponseEntity<Map> listerParticipants(String token) {
         if (authenticationFilter.VerifierTOKEN(token) && authenticationFilter.RecupererRole(token).equals("ADMIN")) {
-            map.put("tableParticipant", this.participantRepo.findAll());
+            map.put("TableParticipant", this.participantRepo.findAll());
         } else {
             map.put("Message", "Acceé réfuse");
         }
@@ -133,13 +135,17 @@ public class ServiceParticipant {
     /*-------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
     public ResponseEntity<Map> insererBonDeCommande(String token, MultipartFile bonDeCommande,
-                                                    String ParticipantID,String FormationID) throws IOException {
+                                                    String ParticipantID, String FormationID) throws IOException {
         Query query = new Query();
         if (authenticationFilter.VerifierTOKEN(token) && authenticationFilter.RecupererRole(token).equals("USER")) {
             Payement payement = mongoTemplate.findOne(query(Criteria.where("ParticipantID").is(ParticipantID).and("FormationID").is(FormationID)), Payement.class);
-            payement.setBonDeCommande(saveFile(bonDeCommande));
-            payementRepo.save(payement);
-            map.put("Message", "Votre bon de commande a été inséré");
+            if (payement.isVerifierInscription() == true) {
+                payement.setBonDeCommande(saveFile(bonDeCommande));
+                payementRepo.save(payement);
+                map.put("Message", "Votre bon de commande a été inséré");
+            } else {
+                map.put("Message", "Votre inscription n'est pas encore validé");
+            }
         } else {
             map.put("Message", "Accés refusé");
         }
@@ -192,19 +198,14 @@ public class ServiceParticipant {
 
     public ResponseEntity<Map> listerUnSeulParticipant(String id, String token) {
         if (authenticationFilter.VerifierTOKEN(token) && authenticationFilter.RecupererRole(token).equals("ADMIN")) {
-            map.put("Participant", this.participantRepo.findById(id));
-        } else {
-            map.put("Message", "Accés refusé");
-        }
-        return new ResponseEntity<>(map, HttpStatus.OK);
-    }
-
-    /*-------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
-
-    public ResponseEntity<Map> InscriptionAuFormation(Payement payement, String Token) throws IOException {
-        if (authenticationFilter.VerifierTOKEN(Token) && authenticationFilter.RecupererRole(token).equals("USER")) {
-            payementRepo.save(payement);
-            map.put("Message", "Votre inscription est enregistrée avec succès, Veuillez attendre la vérification de l'administrateur");
+            Participant participant = mongoTemplate.findOne(query(where("id").is(id)), Participant.class);
+            if (participant != null) {
+                String pass = participant.getMotDePasse();
+                participant.setMotDePasse(authenticationFilter.decrypt(pass));
+                map.put("Participant", participant);
+            } else {
+                map.put("Message", "Participant not found");
+            }
         } else {
             map.put("Message", "Accès refusé");
         }
@@ -213,24 +214,50 @@ public class ServiceParticipant {
 
     /*-------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
-    public ResponseEntity<Map> modifierParticipant(String id, String email, String nomPrenom, String motDePasse, String niveauDEtude, String token) {
-        if (authenticationFilter.VerifierTOKEN(token) && authenticationFilter.RecupererRole(token).equals("ADMIN")) {
-            String PassEnco = bCryptPasswordEncoder.encode(motDePasse);
-            Query query = new Query(Criteria.where("id").is(id));
-            Update updateemail = new Update().set("email", email);
-            Update updatenomPrenom = new Update().set("nomPrenom", nomPrenom);
-            Update updateniveauDEtude = new Update().set("niveauDEtude", niveauDEtude);
-            Update updatemotDePasse = new Update().set("motDePasse", PassEnco);
-            mongoTemplate.updateFirst(query, updateemail, Participant.class);
-            mongoTemplate.updateFirst(query, updatenomPrenom, Participant.class);
-            mongoTemplate.updateFirst(query, updatemotDePasse, Participant.class);
-            mongoTemplate.updateFirst(query, updatemotDePasse, Participant.class);
-            mongoTemplate.updateFirst(query, updateniveauDEtude, Participant.class);
-            map.put("Message", "Mise a Jour avec succeé");
+    public ResponseEntity<Map> InscriptionAuFormation(Payement payement, String Token) throws IOException {
+        if (authenticationFilter.VerifierTOKEN(Token) && authenticationFilter.RecupererRole(Token).equals("USER")) {
+
+            Query existe = new Query(Criteria.where("FormationID").is(payement.getFormationID()).and("ParticipantID").is(payement.getParticipantID()));
+            Long NBRparticipant = mongoTemplate.count(existe, Payement.class);
+            if (NBRparticipant < 1) {
+                Query query = new Query(Criteria.where("id").is(payement.getParticipantID()));
+                payementRepo.save(payement);
+                Participant participant = mongoTemplate.findOne(query, Participant.class);
+                participant.getFormationID().add(payement.getFormationID());
+                participantRepo.save(participant);
+                map.put("Message", "Votre inscription est enregistrée avec succès, Veuillez attendre la vérification de l'administrateur");
+            } else {
+                map.put("Message", "Vous êtes déjà inscrit à cette formation");
+            }
         } else {
-            map.put("Message", "acceé refuser");
+            map.put("Message", "Accès refusé");
         }
         return new ResponseEntity<>(map, HttpStatus.OK);
+    }
+
+    /*-------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
+
+    public ResponseEntity<Map> modifierParticipant(String id, Participant participant, String token) {
+        Map<String, String> response = new HashMap<>();
+
+        if (authenticationFilter.VerifierTOKEN(token) && "ADMIN".equals(authenticationFilter.RecupererRole(token))) {
+            String encryptedPassword = authenticationFilter.encrypt(participant.getMotDePasse());
+
+            Query query = new Query(Criteria.where("id").is(id));
+            Update update = new Update()
+                    .set("email", participant.getEmail())
+                    .set("nomPrenom", participant.getNomPrenom())
+                    .set("niveauDEtude", participant.getNiveauDEtude())
+                    .set("motDePasse", encryptedPassword);
+
+            mongoTemplate.updateFirst(query, update, Participant.class);
+
+            response.put("Message", "Compte mis à jour avec succès");
+        } else {
+            response.put("Message", "Accès refusé");
+        }
+
+        return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
     /*-------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
@@ -240,9 +267,9 @@ public class ServiceParticipant {
             Query query = new Query(Criteria.where("_id").is(id));
             Update update = new Update().set("verification", true);
             mongoTemplate.updateFirst(query, update, Participant.class);
-            map.put("Message", "compte verifier");
+            map.put("Message", "compte verifié");
         } else {
-            map.put("Message", "Acceé refuser");
+            map.put("Message", "Accès refusé");
         }
         return new ResponseEntity<>(map, HttpStatus.OK);
     }

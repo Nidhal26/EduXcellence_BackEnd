@@ -3,12 +3,19 @@ package com.EduXcellence.EduXcellenceBackEnd.Controller;
 import com.EduXcellence.EduXcellenceBackEnd.Models.Attestation;
 import com.EduXcellence.EduXcellenceBackEnd.Models.Formation;
 import com.EduXcellence.EduXcellenceBackEnd.Models.Formateur;
+import com.EduXcellence.EduXcellenceBackEnd.Models.Participant;
 import com.EduXcellence.EduXcellenceBackEnd.Service.*;
 import lombok.SneakyThrows;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.Resource;
 import org.springframework.data.repository.query.Param;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.io.IOException;
 import java.util.Map;
 
 @RestController
@@ -26,16 +33,23 @@ public class AdministrateurController {
     private ServiceAttestation serviceAttestation;
     @Autowired
     private ServiceParticipant serviceParticipant;
+    @Autowired
+    private ServicePayement servicePayement;
 
     /*-------------------------------Gestion des formateurs---------------------------------*/
     @PostMapping("/AjouterFormateur")
-    public ResponseEntity<Map> NouvelleFormateur(@RequestHeader("Token") String Token, @ModelAttribute Formateur F) {
+    public ResponseEntity<Map> NouvelleFormateur(@RequestHeader String Token, @ModelAttribute Formateur F) {
         return serviceFormateur.AjouterFormateur(F, Token);
     }
 
     @GetMapping("/listerFormateurs")
     public ResponseEntity<Map> RecupererFormateurs(@RequestHeader("Token") String Token) {
         return serviceFormateur.listerFormateurs(Token);
+    }
+
+    @GetMapping("/listerUnSeulFormateurs/{id}")
+    public ResponseEntity<Map> listerUnSeulFormateur(@PathVariable String id, @RequestHeader String token) {
+        return serviceFormateur.listerUnSeulFormateur(id, token);
     }
 
     /*------------------------------Gestion des formations------------------------------------*/
@@ -51,7 +65,47 @@ public class AdministrateurController {
         return serviceFormation.listerFormations(Token);
     }
 
-    /*-------------------------------Gestion des attestations----------------------------------*/
+    @PutMapping("/ActiverFormation")
+    public ResponseEntity<Map> ActiverFormation(@RequestHeader("Token") String Token, @RequestParam("id") String id) {
+        return serviceFormation.ActiverFormation(id, Token);
+    }
+
+    @PutMapping("/DesactiverFormation")
+    public ResponseEntity<Map> DesactiverFormation(@RequestHeader("Token") String Token, @RequestParam("id") String id) {
+        return serviceFormation.DesactiverFormation(id, Token);
+    }
+
+    @GetMapping("/listerUnSeulFormation/{id}")
+    public ResponseEntity<Map> listerUnSeulFormation(@RequestHeader("Token") String Token, @PathVariable String id) {
+        return serviceFormation.listerUnSeulFormation(Token, id);
+    }
+
+    @PutMapping("/modifierFormation/{id}")
+    public ResponseEntity<Map> modifierFormation(@PathVariable("id") String id, @ModelAttribute Formation formation, @RequestHeader String token) {
+        return serviceFormation.modifierFormation(id, formation, token);
+    }
+
+    @PutMapping("/ActiverCompteFormateur")
+    public ResponseEntity<Map> ActiverCompteFormateur(@RequestParam("id") String id, @RequestHeader("Token") String token) {
+        return serviceFormateur.ActiverCompteFormateur(id, token);
+    }
+
+    @PutMapping("/DesactiverCompteFormateur")
+    public ResponseEntity<Map> DesactiverCompteFormateur(@RequestParam("id") String id, @RequestHeader("Token") String token) {
+        return serviceFormateur.DesactiverCompteFormateur(id, token);
+    }
+
+    @PutMapping("/modifierCompteFormateur/{id}")
+    public ResponseEntity<Map> modifierformateur(@PathVariable("id") String id,
+                                                 @RequestParam("email") String email,
+                                                 @RequestParam("motDePasse") String motDePasse,
+                                                 @RequestParam String nomPrenom,
+                                                 @RequestHeader("Token") String token,
+                                                 @RequestParam("numTelephone") int numTelephone) {
+        return serviceFormateur.modifierFormateur(id, email, nomPrenom, motDePasse, numTelephone, token);
+    }
+
+    /*------------------------------------------------------------------Gestion des attestations--------------------------------------------------------------*/
 
     @PostMapping("/ajouterAttestation")
     public void ajouterAttestation(@RequestHeader("Token") String Token, @RequestBody Attestation attestation) {
@@ -63,44 +117,51 @@ public class AdministrateurController {
         return serviceAttestation.listerAttestations(Token);
     }
 
+    /*------------------------------------------------------------------Gestion des Participants--------------------------------------------------------------*/
+
     @PutMapping("/verificationCompteParticipant")
-    public ResponseEntity<Map> verificationCompte(@Param("id") String id, @RequestHeader("Token") String token) {
+    public ResponseEntity<Map> verificationCompte(@RequestParam("id") String id, @RequestHeader("Token") String token) {
         return serviceParticipant.verifierCompteParticipant(id, token);
     }
 
-    @PutMapping("/ActiverCompteFormateur")
-    public ResponseEntity<Map> ActiverCompteFormateur(@Param("id") String id, @RequestHeader("Token") String token) {
-        return serviceFormateur.ActiverCompteFormateur(id, token);
+    @PutMapping("/modifierCompteParticipant/{id}")
+    public ResponseEntity<Map> modifierParticipant(@PathVariable String id, @RequestHeader("Token") String token, @ModelAttribute Participant participant) {
+        return serviceParticipant.modifierParticipant(id, participant, token);
     }
 
-    @PutMapping("/DesactiverCompteFormateur")
-    public ResponseEntity<Map> DesactiverCompteFormateur(@Param("id") String id, @RequestHeader("Token") String token) {
-        return serviceFormateur.DesactiverCompteFormateur(id, token);
-    }
-
-    @PutMapping("/modifierCompteParticipant")
-    public ResponseEntity<Map> modifierParticipant(@Param("id") String id,
-                                                   @RequestParam("email") String email,
-                                                   @RequestParam("motDePasse") String motDePasse,
-                                                   @RequestParam String nomPrenom,
-                                                   @RequestHeader("Token") String token,
-                                                   @RequestParam("niveauDEtude") String niveauDEtude) {
-        return serviceParticipant.modifierParticipant(id, email, nomPrenom, motDePasse, niveauDEtude, token);
-    }
-
-    @PutMapping("/modifierCompteFormateur")
-    public ResponseEntity<Map> modifierformateur(@Param("id") String id,
-                                    @RequestParam("email") String email,
-                                    @RequestParam("motDePasse") String motDePasse,
-                                    @RequestParam String nomPrenom,
-                                    @RequestHeader("Token") String token,
-                                    @RequestParam("numTelephone") int numTelephone) {
-        return serviceFormateur.modifierFormateur(id, email, nomPrenom, motDePasse, numTelephone, token);
-    }
 
     @PutMapping("/VerifierInscription")
-    public ResponseEntity<Map> VerifierInscription(@RequestParam String formationId) {
-        return serviceadministrateur.VerifierInscription(formationId);
+    public ResponseEntity<Map> VerifierInscription(@RequestHeader String token, @RequestParam String formationId) {
+        return serviceadministrateur.VerifierInscription(formationId, token);
+    }
+
+    @GetMapping("/listerParticipants")
+    public ResponseEntity<Map> listerParticipants(@RequestHeader String token) {
+        return serviceParticipant.listerParticipants(token);
+    }
+
+    @GetMapping("/listerUnSeulParticipant/{id}")
+    public ResponseEntity<Map> listerUnSeulParticipant(@PathVariable String id, @RequestHeader String token) {
+        return serviceParticipant.listerUnSeulParticipant(id, token);
+    }
+
+    @PostMapping("/listerLesPayementsdeUnSeulParticipant")
+    public ResponseEntity<Map> listerLesPayements(@RequestHeader("token") String token, @RequestParam("idparticipant") String idparticipant) {
+        return servicePayement.listerLesPayements(token, idparticipant);
+    }
+
+    @GetMapping("/download/{fileName}")
+    public ResponseEntity<Resource> downloadFile(@PathVariable String fileName) {
+        try {
+            byte[] data = servicePayement.getFile(fileName);
+            ByteArrayResource resource = new ByteArrayResource(data);
+
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileName + "\"")
+                    .body(resource);
+        } catch (IOException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+        }
     }
 
 

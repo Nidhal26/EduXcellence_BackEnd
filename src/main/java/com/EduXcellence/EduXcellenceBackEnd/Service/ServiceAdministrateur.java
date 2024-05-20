@@ -69,14 +69,18 @@ public class ServiceAdministrateur {
         return new ResponseEntity<>(map, HttpStatus.OK);
     }
 
-    public ResponseEntity<Map> VerifierInscription(String formationId) {
-        List<Payement> payements = mongoTemplate.find(Query.query(Criteria.where("FormationID").is(formationId)).limit(2), Payement.class);
-        for (Payement payement : payements) {
-            payement.setVerifierInscription(true);
-            payementRepo.save(payement);
-        }
+    public ResponseEntity<Map> VerifierInscription(String formationId, String token) {
+        if (authenticationFilter.VerifierTOKEN(token) && authenticationFilter.RecupererRole(token).equals("ADMIN")) {
+            List<Payement> payements = mongoTemplate.find(Query.query(Criteria.where("FormationID").is(formationId)).limit(2), Payement.class);
+            for (Payement payement : payements) {
+                payement.setVerifierInscription(true);
+                payementRepo.save(payement);
+            }
 
-        map.put("Message", "L'inscription des 10 premiers participants a été vérifiée avec succès.");
+            map.put("Message", "L'inscription des 10 premiers participants a été vérifiée avec succès");
+        } else {
+            map.put("Message", "Accès refusé");
+        }
         return new ResponseEntity<>(map, HttpStatus.OK);
     }
 

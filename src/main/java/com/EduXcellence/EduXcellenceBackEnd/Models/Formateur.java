@@ -29,7 +29,7 @@ public class Formateur {
     private String motDePasse;
     private String nomPrenom;
     private int numTelephone;
-    private boolean active = false;
+    private boolean active = true;
     private String Role = "USER";
     private List<String> FormationID = new ArrayList<>();
     private List<String> programme = new ArrayList<>();

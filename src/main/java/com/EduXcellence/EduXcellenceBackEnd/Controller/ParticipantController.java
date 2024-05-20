@@ -21,6 +21,7 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/apiParticipant")
+@CrossOrigin(origins = "*")
 public class ParticipantController {
     @Autowired
     private ServiceParticipant serviceParticipant;
@@ -65,13 +66,16 @@ public class ParticipantController {
     }
 
     @PostMapping("/insererBonDeCommande")
-    public ResponseEntity<Map> insererBonDeCommande(@RequestHeader String token,@RequestParam MultipartFile bonDeCommande, @RequestParam String ParticipantID, @RequestParam String FormationID) throws IOException {
-        return serviceParticipant.insererBonDeCommande(token, bonDeCommande,ParticipantID,FormationID);
+    public ResponseEntity<Map> insererBonDeCommande(@RequestHeader String token,
+                                                    @RequestParam("bonDeCommande") MultipartFile bonDeCommande,
+                                                    @RequestParam String ParticipantID,
+                                                    @RequestParam String FormationID) throws IOException {
+        return serviceParticipant.insererBonDeCommande(token, bonDeCommande, ParticipantID, FormationID);
     }
 
     @GetMapping("/recupererBonDeCommande")
-    public ResponseEntity<UrlResource> recupererBonDeCommande(@RequestHeader String token, @RequestParam String ParticipantID, @RequestParam String FormationID){
-        return serviceParticipant.recupererBonDeCommande(token, ParticipantID,FormationID);
+    public ResponseEntity<UrlResource> recupererBonDeCommande(@RequestHeader String token, @RequestParam String ParticipantID, @RequestParam String FormationID) {
+        return serviceParticipant.recupererBonDeCommande(token, ParticipantID, FormationID);
     }
 
 }

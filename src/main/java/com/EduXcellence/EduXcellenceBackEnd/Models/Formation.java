@@ -1,8 +1,10 @@
 package com.EduXcellence.EduXcellenceBackEnd.Models;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.*;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -29,26 +31,7 @@ public class Formation {
     private Date datefin;
     private double prix;
     private String ParticipantID;
-    private String FormateurID;
+    private List<String> FormateurID = new ArrayList<>();
     private boolean affiche = true;
-
-    public Formation(String themeFormation, String desciption, Date datedebut, Date datefin, double prix) throws IOException {
-        this.themeFormation = themeFormation;
-        this.desciption = desciption;
-        this.datedebut = datedebut;
-        this.datefin = datefin;
-        this.prix = prix;
-        this.affiche = true;
-    }
-
-    private String saveFile(MultipartFile file) throws IOException {
-        String fileName = String.valueOf(new Random().nextInt(1000000)) + "_" + file.getOriginalFilename();
-        Path fileStorageLocation = Paths.get("uploads").toAbsolutePath().normalize();
-        if (!Files.exists(fileStorageLocation)) {
-            Files.createDirectories(fileStorageLocation);
-        }
-        Files.copy(file.getInputStream(), fileStorageLocation.resolve(fileName), StandardCopyOption.REPLACE_EXISTING);
-        return fileName;
-    }
 
 }

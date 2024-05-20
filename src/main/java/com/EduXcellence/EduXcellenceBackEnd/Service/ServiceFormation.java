@@ -2,6 +2,7 @@ package com.EduXcellence.EduXcellenceBackEnd.Service;
 
 
 import com.EduXcellence.EduXcellenceBackEnd.Models.Formation;
+import com.EduXcellence.EduXcellenceBackEnd.Models.Payement;
 import com.EduXcellence.EduXcellenceBackEnd.Repository.FormationRepo;
 import com.EduXcellence.EduXcellenceBackEnd.Security.AuthenticationFilter;
 import org.jvnet.hk2.annotations.Service;
@@ -29,6 +30,7 @@ public class ServiceFormation {
 
     @Autowired
     MongoTemplate mongoTemplate;
+    Payement payement = new Payement();
 
     Map map = new HashMap();
 
@@ -46,10 +48,11 @@ public class ServiceFormation {
                 map.put("Message", "La date de début de la formation doit être aujourd'hui ou après");
             } else {
                 formationRepo.save(formation);
-                map.put("Message", "La formation a été ajoutée avec succès.");
+                map.put("Message", "La formation a été ajoutée avec succès");
+                map.put("verif", true);
             }
         } else {
-            map.put("Message", "Accès non autorisé.");
+
         }
         return new ResponseEntity<>(map, HttpStatus.OK);
     }
@@ -61,9 +64,9 @@ public class ServiceFormation {
             Query query = new Query(Criteria.where("_id").is(id));
             Update update = new Update().set("affiche", true);
             mongoTemplate.updateFirst(query, update, Formation.class);
-            map.put("Message", "Formation Activer");
+            map.put("Message", "Formation Activée");
         } else {
-            map.put("Message", "Acceé refuser");
+            map.put("Message", "Accès refusé");
         }
         return new ResponseEntity<>(map, HttpStatus.OK);
     }
@@ -75,9 +78,9 @@ public class ServiceFormation {
             Query query = new Query(Criteria.where("_id").is(id));
             Update update = new Update().set("affiche", false);
             mongoTemplate.updateFirst(query, update, Formation.class);
-            map.put("Message", "Formation Desactiver");
+            map.put("Message", "Formation Desactivée");
         } else {
-            map.put("Message", "Acceé refuser");
+            map.put("Message", "Accès refusé");
         }
         return new ResponseEntity<>(map, HttpStatus.OK);
     }
@@ -85,32 +88,44 @@ public class ServiceFormation {
     /*-------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
     public ResponseEntity<Map> modifierFormation(String id, Formation formation, String token) {
-        if (authFiltre.VerifierTOKEN(token) && authFiltre.RecupererRole(token).equals("ADMIN")) {
-            Query query = new Query(Criteria.where("id").is(id));
-            Update updatethemeFormation = new Update().set("themeFormation", formation.getThemeFormation());
-            Update updatedesciption = new Update().set("desciption", formation.getDesciption());
-            Update updatedatedebut = new Update().set("datedebut", formation.getDatedebut());
-            Update updatedatefin = new Update().set("datefin", formation.getDatefin());
-            Update updateprix = new Update().set("prix", formation.getPrix());
-            mongoTemplate.updateFirst(query, updatethemeFormation, Formation.class);
-            mongoTemplate.updateFirst(query, updatedesciption, Formation.class);
-            mongoTemplate.updateFirst(query, updatedatedebut, Formation.class);
-            mongoTemplate.updateFirst(query, updatedatefin, Formation.class);
-            mongoTemplate.updateFirst(query, updateprix, Formation.class);
-            map.put("Message", "Mise a Jour avec succeé");
+        Map<String, String> map = new HashMap<>();
+
+        if (authFiltre.VerifierTOKEN(token) && "ADMIN".equals(authFiltre.RecupererRole(token))) {
+            Query query = new Query(Criteria.where("idformation").is(id));
+            Update update = new Update()
+                    .set("themeFormation", formation.getThemeFormation())
+                    .set("desciption", formation.getDesciption())
+                    .set("datedebut", formation.getDatedebut())
+                    .set("datefin", formation.getDatefin())
+                    .set("prix", formation.getPrix());
+
+            mongoTemplate.updateFirst(query, update, Formation.class);
+            map.put("Message", "Mise à jour avec succès");
+            return new ResponseEntity<>(map, HttpStatus.OK);
         } else {
-            map.put("Message", "acceé refuser");
+            map.put("Message", "Accès refusé");
+            return new ResponseEntity<>(map, HttpStatus.FORBIDDEN);
         }
-        return new ResponseEntity<>(map, HttpStatus.OK);
     }
 
     /*-------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
     public ResponseEntity<Map> listerFormations(String token) {
         if (authFiltre.VerifierTOKEN(token) && authFiltre.RecupererRole(token).equals("ADMIN")) {
-            map.put("tableFormation", this.formationRepo.findAll());
+            map.put("TableFormation", this.formationRepo.findAll());
         } else {
-            map.put("Message", "Acceé refuseé");
+            map.put("Message", "Accès refusé");
+        }
+        return new ResponseEntity<>(map, HttpStatus.OK);
+    }
+
+    public ResponseEntity<Map> listerUnSeulFormation(String token, String id) {
+        if (authFiltre.VerifierTOKEN(token) && authFiltre.RecupererRole(token).equals("ADMIN")) {
+            Query query = new Query(Criteria.where("_id").is(id));
+            Formation formation = mongoTemplate.findOne(query, Formation.class);
+            map.put("Formation", formation);
+        } else {
+            map.put("Message", "Accès refusé");
         }
         return new ResponseEntity<>(map, HttpStatus.OK);
     }
