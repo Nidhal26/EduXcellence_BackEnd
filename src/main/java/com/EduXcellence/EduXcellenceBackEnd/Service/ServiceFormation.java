@@ -1,8 +1,10 @@
 package com.EduXcellence.EduXcellenceBackEnd.Service;
 
 
+import com.EduXcellence.EduXcellenceBackEnd.Models.Formateur;
 import com.EduXcellence.EduXcellenceBackEnd.Models.Formation;
 import com.EduXcellence.EduXcellenceBackEnd.Models.Payement;
+import com.EduXcellence.EduXcellenceBackEnd.Repository.FormateurRepo;
 import com.EduXcellence.EduXcellenceBackEnd.Repository.FormationRepo;
 import com.EduXcellence.EduXcellenceBackEnd.Security.AuthenticationFilter;
 import org.jvnet.hk2.annotations.Service;
@@ -14,16 +16,15 @@ import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Service
 public class ServiceFormation {
 
     @Autowired
     private FormationRepo formationRepo;
+    @Autowired
+    private FormateurRepo formateurRepo;
 
     @Autowired
     AuthenticationFilter authFiltre;
@@ -130,5 +131,45 @@ public class ServiceFormation {
         return new ResponseEntity<>(map, HttpStatus.OK);
     }
 
+    /*-------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
+    public ResponseEntity<Map<String, String>> affecterFormateur(String token, String idFormateur, String idFormation) {
+        if (authFiltre.VerifierTOKEN(token) && authFiltre.RecupererRole(token).equals("ADMIN")) {
+            Optional<Formation> formationOpt = formationRepo.findById(idFormation);
+            Optional<Formateur> formateurOpt = formateurRepo.findById(idFormateur);
+
+            if (formationOpt.isPresent() && formateurOpt.isPresent()) {
+                Formation formation = formationOpt.get();
+                Formateur formateur = formateurOpt.get();
+
+                // Ajouter le formateur à la liste des formateurs de la formation
+                if (!formation.getFormateurID().contains(idFormateur)) {
+                    formation.getFormateurID().add(idFormateur);
+                    formationRepo.save(formation);
+
+                    // Ajouter la formation à la liste des formations du formateur
+                    if (!formateur.getFormationID().contains(idFormation)) {
+                        formateur.getFormationID().add(idFormation);
+                        formateurRepo.save(formateur);
+                    }
+
+                    Map<String, String> response = new HashMap<>();
+                    response.put("message", "Formateur affecté avec succès");
+                    return ResponseEntity.ok(response);
+                } else {
+                    Map<String, String> response = new HashMap<>();
+                    response.put("message", "Le formateur est déjà affecté à cette formation");
+                    return ResponseEntity.badRequest().body(response);
+                }
+            } else {
+                Map<String, String> response = new HashMap<>();
+                response.put("message", "Formateur ou formation introuvable");
+                return ResponseEntity.status(404).body(response);
+            }
+        } else {
+            Map<String, String> response = new HashMap<>();
+            response.put("message", "Accès refusé : token invalide ou rôle non autorisé");
+            return ResponseEntity.status(403).body(response);
+        }
+    }
 
 }
