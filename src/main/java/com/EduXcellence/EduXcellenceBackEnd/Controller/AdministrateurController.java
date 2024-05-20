@@ -164,5 +164,10 @@ public class AdministrateurController {
         }
     }
 
+    @PostMapping("/affecterFormateur")
+    public ResponseEntity<Map<String, String>> affecterFormateur(@RequestHeader String token, @RequestParam String idFormateur,
+                                                                 @RequestParam String idFormation){
+        return serviceFormation.affecterFormateur(token,idFormateur,idFormation);
+    }
 
 }
